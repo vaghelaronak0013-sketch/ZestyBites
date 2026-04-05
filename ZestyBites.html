@@ -1,0 +1,470 @@
+import React, { useState, useEffect, useMemo } from 'react';
+import { 
+  ChefHat, 
+  Clock, 
+  Users, 
+  Flame, 
+  Play, 
+  Volume2, 
+  VolumeX, 
+  ChevronRight, 
+  CheckCircle2, 
+  Utensils, 
+  Search,
+  Menu,
+  X,
+  Heart,
+  Share2,
+  Info
+} from 'lucide-react';
+
+// --- Mock Data ---
+const RECIPE_DATA = {
+  id: 1,
+  title: "Truffle-Infused Wild Mushroom Risotto",
+  description: "An elegant, creamy Italian classic elevated with earthy wild mushrooms and a hint of white truffle oil. Perfect for sophisticated dinner parties or a luxurious weeknight treat.",
+  image: "https://images.unsplash.com/photo-1476124369491-e7addf5db371?auto=format&fit=crop&q=80&w=1200",
+  prepTime: "15 mins",
+  cookTime: "35 mins",
+  servings: 4,
+  calories: "420 kcal",
+  difficulty: "Intermediate",
+  tags: ["Italian", "Vegetarian", "Gluten-Free"],
+  ingredients: [
+    { id: 1, name: "Arborio Rice", amount: "1.5 cups" },
+    { id: 2, name: "Wild Mushrooms (Porcini, Shiitake)", amount: "500g" },
+    { id: 3, name: "Vegetable Broth (Warm)", amount: "5 cups" },
+    { id: 4, name: "Shallots, finely minced", amount: "2" },
+    { id: 5, name: "Dry White Wine", amount: "1/2 cup" },
+    { id: 6, name: "Parmesan Cheese, grated", amount: "1/2 cup" },
+    { id: 7, name: "Unsalted Butter", amount: "3 tbsp" },
+    { id: 8, name: "White Truffle Oil", amount: "1 tbsp" },
+    { id: 9, name: "Fresh Thyme", amount: "2 sprigs" }
+  ],
+  instructions: [
+    "In a heavy-bottomed pot, sauté the minced shallots in 1 tablespoon of butter until translucent and fragrant.",
+    "Add the sliced wild mushrooms and fresh thyme. Cook until mushrooms have released their moisture and turned golden brown.",
+    "Stir in the Arborio rice, toasting it for 2 minutes until the edges are translucent.",
+    "Deglaze the pan with white wine, stirring constantly until the liquid is fully absorbed.",
+    "Add the warm vegetable broth one ladle at a time. Wait for the liquid to be absorbed before adding the next ladle, stirring frequently to release the starches.",
+    "Once the rice is al dente and creamy, remove from heat. Stir in the remaining butter, parmesan, and truffle oil.",
+    "Season with salt and freshly cracked black pepper. Garnish with more thyme and serve immediately."
+  ],
+  chefSecrets: [
+    "Never wash your mushrooms with water; wipe them with a damp cloth to prevent them from becoming soggy.",
+    "Ensure your broth is simmering in a separate pot. Adding cold broth to the rice shocks the starch and stops the cooking process."
+  ]
+};
+
+const RELATED_RECIPES = [
+  { id: 2, title: "Pan-Seared Scallops", time: "20m", img: "https://images.unsplash.com/photo-1599487488170-d11ec9c172f0?auto=format&fit=crop&q=80&w=400" },
+  { id: 3, title: "Herbed Focaccia", time: "2h", img: "https://images.unsplash.com/photo-1534620808146-d33bb39128b2?auto=format&fit=crop&q=80&w=400" }
+];
+
+export default function App() {
+  const [checkedIngredients, setCheckedIngredients] = useState({});
+  const [isKitchenMode, setIsKitchenMode] = useState(false);
+  const [currentStep, setCurrentStep] = useState(0);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isLiked, setIsLiked] = useState(false);
+
+  // --- Kitchen Mode (Speech Synthesis) ---
+  const speakInstruction = (index) => {
+    if (!('speechSynthesis' in window)) return;
+    window.speechSynthesis.cancel();
+    const text = RECIPE_DATA.instructions[index];
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 0.9;
+    utterance.pitch = 1;
+    window.speechSynthesis.speak(utterance);
+    setCurrentStep(index);
+  };
+
+  const toggleKitchenMode = () => {
+    if (isKitchenMode) {
+      window.speechSynthesis.cancel();
+      setIsKitchenMode(false);
+    } else {
+      setIsKitchenMode(true);
+      speakInstruction(0);
+    }
+  };
+
+  const nextStep = () => {
+    if (currentStep < RECIPE_DATA.instructions.length - 1) {
+      const next = currentStep + 1;
+      setCurrentStep(next);
+      if (isKitchenMode) speakInstruction(next);
+    }
+  };
+
+  const prevStep = () => {
+    if (currentStep > 0) {
+      const prev = currentStep - 1;
+      setCurrentStep(prev);
+      if (isKitchenMode) speakInstruction(prev);
+    }
+  };
+
+  // --- Ingredient Checklist Logic ---
+  const toggleIngredient = (id) => {
+    setCheckedIngredients(prev => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  return (
+    <div className="min-h-screen bg-[#FDFCF9] text-stone-800 font-sans selection:bg-orange-100">
+      {/* Dynamic Styles for Google Fonts */}
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap');
+        .font-serif { font-family: 'Playfair Display', serif; }
+        .font-sans { font-family: 'Plus Jakarta Sans', sans-serif; }
+      `}</style>
+
+      {/* Navigation */}
+      <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-stone-100">
+        <div className="max-w-7xl mx-auto px-4 h-20 flex items-center justify-between">
+          <div className="flex items-center gap-2 cursor-pointer group">
+            <div className="w-10 h-10 bg-orange-500 rounded-xl flex items-center justify-center text-white rotate-3 group-hover:rotate-0 transition-transform">
+              <ChefHat size={24} />
+            </div>
+            <span className="text-2xl font-serif font-black tracking-tight">Zesty<span className="text-orange-500">Bites</span></span>
+          </div>
+
+          <div className="hidden md:flex items-center gap-8 font-medium text-sm uppercase tracking-widest text-stone-500">
+            <a href="#" className="hover:text-orange-500 transition-colors">Recipes</a>
+            <a href="#" className="hover:text-orange-500 transition-colors">Cooking School</a>
+            <a href="#" className="hover:text-orange-500 transition-colors">Shop</a>
+            <a href="#" className="hover:text-orange-500 transition-colors">About</a>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <button className="p-2 hover:bg-stone-100 rounded-full transition-colors">
+              <Search size={20} />
+            </button>
+            <button 
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              className="md:hidden p-2 hover:bg-stone-100 rounded-full"
+            >
+              {isMenuOpen ? <X size={20} /> : <Menu size={20} />}
+            </button>
+            <button className="hidden md:block bg-stone-900 text-white px-6 py-2.5 rounded-full text-sm font-bold hover:bg-stone-800 transition-all active:scale-95">
+              Newsletter
+            </button>
+          </div>
+        </div>
+      </nav>
+
+      {/* Hero Section */}
+      <header className="max-w-7xl mx-auto px-4 pt-12 pb-8">
+        <div className="grid lg:grid-cols-2 gap-12 items-center">
+          <div className="space-y-6">
+            <div className="flex gap-2">
+              {RECIPE_DATA.tags.map(tag => (
+                <span key={tag} className="px-3 py-1 bg-orange-50 text-orange-600 text-xs font-bold uppercase tracking-wider rounded-full">
+                  {tag}
+                </span>
+              ))}
+            </div>
+            <h1 className="text-5xl md:text-7xl font-serif font-bold leading-[1.1] text-stone-900">
+              {RECIPE_DATA.title}
+            </h1>
+            <p className="text-lg text-stone-600 leading-relaxed max-w-xl">
+              {RECIPE_DATA.description}
+            </p>
+            
+            <div className="flex flex-wrap gap-6 pt-4">
+              <div className="flex items-center gap-2">
+                <Clock size={20} className="text-orange-500" />
+                <div>
+                  <p className="text-[10px] uppercase font-bold text-stone-400">Total Time</p>
+                  <p className="font-bold">{RECIPE_DATA.cookTime}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Users size={20} className="text-orange-500" />
+                <div>
+                  <p className="text-[10px] uppercase font-bold text-stone-400">Yield</p>
+                  <p className="font-bold">{RECIPE_DATA.servings} Servings</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Flame size={20} className="text-orange-500" />
+                <div>
+                  <p className="text-[10px] uppercase font-bold text-stone-400">Level</p>
+                  <p className="font-bold">{RECIPE_DATA.difficulty}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-4 pt-6">
+              <button 
+                onClick={() => setIsLiked(!isLiked)}
+                className={`flex items-center gap-2 px-6 py-3 rounded-full border transition-all ${isLiked ? 'bg-red-50 border-red-200 text-red-500' : 'bg-white border-stone-200 hover:border-stone-400'}`}
+              >
+                <Heart size={18} fill={isLiked ? "currentColor" : "none"} />
+                <span className="font-bold">Save Recipe</span>
+              </button>
+              <button className="p-3 rounded-full border border-stone-200 hover:border-stone-400 transition-all">
+                <Share2 size={18} />
+              </button>
+            </div>
+          </div>
+
+          <div className="relative group">
+            <div className="absolute -inset-4 bg-orange-100/50 rounded-[2rem] -rotate-2 group-hover:rotate-0 transition-transform duration-700"></div>
+            <div className="relative aspect-[4/5] overflow-hidden rounded-[2rem] shadow-2xl">
+              <img 
+                src={RECIPE_DATA.image} 
+                alt={RECIPE_DATA.title}
+                className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-1000"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent"></div>
+              <button className="absolute bottom-8 right-8 w-16 h-16 bg-white rounded-full flex items-center justify-center text-orange-500 shadow-xl hover:scale-110 active:scale-95 transition-all">
+                <Play size={24} fill="currentColor" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content Layout */}
+      <main className="max-w-7xl mx-auto px-4 py-16 grid grid-cols-1 lg:grid-cols-12 gap-16">
+        
+        {/* LEFT: Ingredients & Instructions */}
+        <div className="lg:col-span-8 space-y-16">
+          
+          {/* Ingredients Section */}
+          <section>
+            <div className="flex items-center justify-between mb-8">
+              <h2 className="text-3xl font-serif font-bold">Ingredients</h2>
+              <p className="text-sm text-stone-400 italic">Tap to cross off as you prep</p>
+            </div>
+            <div className="grid md:grid-cols-2 gap-4">
+              {RECIPE_DATA.ingredients.map(item => (
+                <div 
+                  key={item.id}
+                  onClick={() => toggleIngredient(item.id)}
+                  className={`flex items-center gap-4 p-4 rounded-2xl border cursor-pointer transition-all ${checkedIngredients[item.id] ? 'bg-stone-50 border-stone-100 opacity-60' : 'bg-white border-stone-100 shadow-sm hover:border-orange-200'}`}
+                >
+                  <div className={`w-6 h-6 rounded-md border-2 flex items-center justify-center transition-colors ${checkedIngredients[item.id] ? 'bg-green-500 border-green-500 text-white' : 'border-stone-200'}`}>
+                    {checkedIngredients[item.id] && <CheckCircle2 size={14} />}
+                  </div>
+                  <div>
+                    <span className={`block font-bold text-sm ${checkedIngredients[item.id] ? 'line-through text-stone-400' : ''}`}>{item.amount}</span>
+                    <span className={`text-stone-600 ${checkedIngredients[item.id] ? 'line-through' : ''}`}>{item.name}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {/* Kitchen Mode / Instructions */}
+          <section className="relative">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+              <h2 className="text-3xl font-serif font-bold">Instructions</h2>
+              
+              {/* Kitchen Mode Toggle */}
+              <button 
+                onClick={toggleKitchenMode}
+                className={`flex items-center gap-3 px-5 py-2.5 rounded-full font-bold transition-all ${isKitchenMode ? 'bg-orange-500 text-white shadow-lg shadow-orange-200 ring-4 ring-orange-100' : 'bg-stone-100 text-stone-600 hover:bg-stone-200'}`}
+              >
+                {isKitchenMode ? <Volume2 size={18} /> : <VolumeX size={18} />}
+                {isKitchenMode ? 'Kitchen Mode Active' : 'Enable Kitchen Mode'}
+              </button>
+            </div>
+
+            {/* Steps Rendering */}
+            <div className="space-y-8">
+              {RECIPE_DATA.instructions.map((step, idx) => (
+                <div 
+                  key={idx}
+                  className={`relative pl-12 pb-8 border-l-2 last:pb-0 transition-all duration-500 ${currentStep === idx ? 'border-orange-500 opacity-100 scale-[1.02] translate-x-2' : 'border-stone-100 opacity-40'}`}
+                >
+                  <div className={`absolute -left-[1.35rem] top-0 w-10 h-10 rounded-full flex items-center justify-center font-serif font-bold text-lg shadow-lg border-4 border-[#FDFCF9] transition-colors ${currentStep === idx ? 'bg-orange-500 text-white' : 'bg-stone-100 text-stone-400'}`}>
+                    {idx + 1}
+                  </div>
+                  <p className={`text-lg leading-relaxed ${currentStep === idx ? 'text-stone-900 font-medium' : 'text-stone-500'}`}>
+                    {step}
+                  </p>
+                  
+                  {currentStep === idx && isKitchenMode && (
+                    <div className="mt-4 flex gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                      <button 
+                        onClick={prevStep}
+                        disabled={currentStep === 0}
+                        className="p-2 bg-white border border-stone-200 rounded-lg hover:bg-stone-50 disabled:opacity-30"
+                      >
+                        Previous Step
+                      </button>
+                      <button 
+                        onClick={nextStep}
+                        disabled={currentStep === RECIPE_DATA.instructions.length - 1}
+                        className="px-4 py-2 bg-orange-500 text-white rounded-lg font-bold hover:bg-orange-600 flex items-center gap-2 shadow-md disabled:opacity-30"
+                      >
+                        Next Step <ChevronRight size={16} />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </section>
+        </div>
+
+        {/* RIGHT: Sidebar */}
+        <aside className="lg:col-span-4 space-y-10">
+          
+          {/* Chef's Secrets Card */}
+          <div className="bg-stone-900 text-white p-8 rounded-[2rem] shadow-xl relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/10 rounded-full blur-3xl -mr-16 -mt-16"></div>
+            <h3 className="text-2xl font-serif font-bold mb-6 flex items-center gap-3">
+              <span className="text-orange-500">Chef's</span> Secrets
+            </h3>
+            <ul className="space-y-6">
+              {RECIPE_DATA.chefSecrets.map((secret, i) => (
+                <li key={i} className="flex gap-4 group">
+                  <div className="mt-1.5 w-1.5 h-1.5 bg-orange-500 rounded-full shrink-0 group-hover:scale-150 transition-transform"></div>
+                  <p className="text-stone-300 text-sm leading-relaxed italic">"{secret}"</p>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Nutrition Facts */}
+          <div className="bg-white border border-stone-100 p-8 rounded-[2rem] shadow-sm">
+            <h3 className="text-xl font-serif font-bold mb-6 flex items-center gap-2">
+              <Info size={20} className="text-orange-500" />
+              Nutrition Facts
+            </h3>
+            <div className="space-y-4">
+              <div className="flex justify-between border-b border-stone-50 pb-2">
+                <span className="text-stone-500">Calories</span>
+                <span className="font-bold">{RECIPE_DATA.calories}</span>
+              </div>
+              <div className="flex justify-between border-b border-stone-50 pb-2">
+                <span className="text-stone-500">Carbohydrates</span>
+                <span className="font-bold">52g</span>
+              </div>
+              <div className="flex justify-between border-b border-stone-50 pb-2">
+                <span className="text-stone-500">Protein</span>
+                <span className="font-bold">12g</span>
+              </div>
+              <div className="flex justify-between border-b border-stone-50 pb-2">
+                <span className="text-stone-500">Total Fat</span>
+                <span className="font-bold">18g</span>
+              </div>
+            </div>
+            <button className="w-full mt-6 text-orange-500 font-bold text-xs uppercase tracking-widest hover:text-orange-600 transition-colors">
+              Full Nutritional Analysis
+            </button>
+          </div>
+
+          {/* Related Content */}
+          <div>
+            <h3 className="text-xl font-serif font-bold mb-6">More from the Chef</h3>
+            <div className="space-y-6">
+              {RELATED_RECIPES.map(recipe => (
+                <div key={recipe.id} className="flex gap-4 group cursor-pointer">
+                  <div className="w-24 h-24 rounded-2xl overflow-hidden shrink-0">
+                    <img 
+                      src={recipe.img} 
+                      alt={recipe.title} 
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
+                    />
+                  </div>
+                  <div className="flex flex-col justify-center">
+                    <h4 className="font-bold group-hover:text-orange-500 transition-colors">{recipe.title}</h4>
+                    <div className="flex items-center gap-2 text-xs text-stone-400 mt-1 uppercase font-bold tracking-tighter">
+                      <Clock size={12} /> {recipe.time}
+                      <span className="w-1 h-1 bg-stone-300 rounded-full"></span>
+                      <Utensils size={12} /> Appetizer
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </aside>
+      </main>
+
+      {/* Mobile Kitchen HUD */}
+      {isKitchenMode && (
+        <div className="fixed bottom-6 left-4 right-4 md:hidden bg-stone-900 text-white p-6 rounded-3xl shadow-2xl z-50 animate-in slide-in-from-bottom-10">
+          <div className="flex items-center justify-between mb-4">
+            <span className="text-orange-500 font-bold text-xs uppercase tracking-widest">Kitchen Mode</span>
+            <button onClick={() => setIsKitchenMode(false)} className="p-1 hover:bg-white/10 rounded-full">
+              <X size={16} />
+            </button>
+          </div>
+          <p className="text-sm line-clamp-2 mb-4 leading-relaxed italic">
+            "{RECIPE_DATA.instructions[currentStep]}"
+          </p>
+          <div className="flex gap-2">
+            <button 
+              onClick={prevStep}
+              disabled={currentStep === 0}
+              className="flex-1 py-3 bg-white/10 rounded-xl font-bold active:scale-95 disabled:opacity-20"
+            >
+              Prev
+            </button>
+            <button 
+              onClick={nextStep}
+              disabled={currentStep === RECIPE_DATA.instructions.length - 1}
+              className="flex-[2] py-3 bg-orange-500 rounded-xl font-bold active:scale-95 flex items-center justify-center gap-2 disabled:opacity-20"
+            >
+              Next Step <ChevronRight size={18} />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Footer */}
+      <footer className="bg-white border-t border-stone-100 py-20 px-4">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-12">
+          <div className="md:col-span-1">
+            <div className="flex items-center gap-2 mb-6">
+              <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center text-white">
+                <ChefHat size={18} />
+              </div>
+              <span className="text-xl font-serif font-black tracking-tight">Zesty<span className="text-orange-500">Bites</span></span>
+            </div>
+            <p className="text-stone-500 text-sm leading-relaxed">
+              Redefining the digital cooking experience through technology and storytelling. Founded in 2024.
+            </p>
+          </div>
+          <div>
+            <h4 className="font-serif font-bold mb-4">Recipes</h4>
+            <ul className="text-sm space-y-2 text-stone-500">
+              <li><a href="#" className="hover:text-orange-500 transition-colors">Quick Dinners</a></li>
+              <li><a href="#" className="hover:text-orange-500 transition-colors">Vegetarian</a></li>
+              <li><a href="#" className="hover:text-orange-500 transition-colors">Desserts</a></li>
+              <li><a href="#" className="hover:text-orange-500 transition-colors">Healthy Options</a></li>
+            </ul>
+          </div>
+          <div>
+            <h4 className="font-serif font-bold mb-4">Community</h4>
+            <ul className="text-sm space-y-2 text-stone-500">
+              <li><a href="#" className="hover:text-orange-500 transition-colors">Chef's Blog</a></li>
+              <li><a href="#" className="hover:text-orange-500 transition-colors">Cooking Forum</a></li>
+              <li><a href="#" className="hover:text-orange-500 transition-colors">Competitions</a></li>
+            </ul>
+          </div>
+          <div>
+            <h4 className="font-serif font-bold mb-4">Socials</h4>
+            <div className="flex gap-4">
+              <div className="w-10 h-10 rounded-full border border-stone-100 flex items-center justify-center hover:bg-orange-50 hover:text-orange-500 hover:border-orange-200 transition-all cursor-pointer">
+                <Share2 size={18} />
+              </div>
+              <div className="w-10 h-10 rounded-full border border-stone-100 flex items-center justify-center hover:bg-orange-50 hover:text-orange-500 hover:border-orange-200 transition-all cursor-pointer">
+                <Heart size={18} />
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="max-w-7xl mx-auto mt-16 pt-8 border-t border-stone-50 text-center text-xs text-stone-400 uppercase tracking-widest font-bold">
+          © 2024 ZestyBites Editorial. All Rights Reserved.
+        </div>
+      </footer>
+    </div>
+  );
+}
